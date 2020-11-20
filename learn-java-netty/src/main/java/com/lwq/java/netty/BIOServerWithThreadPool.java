@@ -6,26 +6,22 @@ import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Created by Administrator on 2020-11-18.
- * 这种最传统的IO方式，在两个地方都会阻塞
- * 一个是serverSocket.accept()
- * 另一个是inputStream.read(bytes)
- * 如果再有客户端进行连接也进不来，这样显然不能接受
  */
-public class BIOServer {
+public class BIOServerWithThreadPool {
     private int port;
 
-    public BIOServer(int port) {
+    public BIOServerWithThreadPool(int port) {
         this.port = port;
     }
 
     public void start() {
         ServerSocket serverSocket = null;
-        Socket socket = null;
-        InputStream inputStream = null;
-        OutputStream outputStream = null;
+        ExecutorService executorService = Executors.newCachedThreadPool();
         try {
             serverSocket = new ServerSocket();
             serverSocket.bind(new InetSocketAddress("127.0.0.1", port));
@@ -33,17 +29,33 @@ public class BIOServer {
             System.out.printf("服务器绑定端口:%d...\n", port);
             while (true) {
                 // 如果没有新连接，主线程会一直阻塞在这里
-                socket = serverSocket.accept();
+                final Socket socket = serverSocket.accept();
                 System.out.println("服务器接收新连接...");
-                inputStream = socket.getInputStream();
-                outputStream = socket.getOutputStream();
-                byte[] bytes = new byte[1024];
-                // 如果没有数据，会一直阻塞在read方法
-                while (inputStream.read(bytes) > 0) {
-                    String message = new String(bytes, "UTF-8");
-                    System.out.printf("服务器接收消息:%s\n", message);
-                    outputStream.write("success".getBytes("UTF-8"));
-                }
+                executorService.submit(new Runnable() {
+                    public void run() {
+                        handle(socket);
+                    }
+                });
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+    }
+
+
+    public void handle(Socket socket) {
+        InputStream inputStream = null;
+        OutputStream outputStream = null;
+        try {
+            inputStream = socket.getInputStream();
+            outputStream = socket.getOutputStream();
+            byte[] bytes = new byte[1024];
+            // 如果没有数据，会一直阻塞在read方法
+            while (inputStream.read(bytes) > 0) {
+                String message = new String(bytes, "UTF-8");
+                System.out.printf("服务器接收消息:%s\n", message);
+                outputStream.write("success".getBytes("UTF-8"));
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -70,10 +82,11 @@ public class BIOServer {
                 }
             }
         }
+
     }
 
     public static void main(String[] args) {
-        BIOServer bioServer = new BIOServer(5555);
+        BIOServerWithThreadPool bioServer = new BIOServerWithThreadPool(5555);
         bioServer.start();
     }
 }
