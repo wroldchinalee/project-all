@@ -50,7 +50,7 @@ public class TestKeyedState {
             long sum = countAndSum.f1 + value.f1;
             countAndSumState.update(Tuple2.of(count, sum));
             if (count >= 3) {
-                double avg = sum / count;
+                double avg = sum * 1.0 / count;
                 countAndSumState.clear();
                 out.collect(Tuple2.of(value.f0, avg));
             }
