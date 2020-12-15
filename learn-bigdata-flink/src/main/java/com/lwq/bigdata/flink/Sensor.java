@@ -8,6 +8,9 @@ public class Sensor {
     private long timestamp;
     private double temp;
 
+    public Sensor() {
+    }
+
     public Sensor(String id, long timestamp, double temp) {
         this.id = id;
         this.timestamp = timestamp;
