@@ -17,12 +17,6 @@
             <groupId>com.alibaba.alink</groupId>
             <artifactId>alink_core_flink-1.9_2.11</artifactId>
             <version>1.2.0</version>
-            <exclusions>
-                <exclusion>
-                    <artifactId>json-path</artifactId>
-                    <groupId>com.jayway.jsonpath</groupId>
-                </exclusion>
-            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.apache.flink</groupId>
@@ -44,6 +38,12 @@
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <version>4.12</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.alibaba.alink</groupId>
+            <artifactId>shaded_flink_oss_fs_hadoop</artifactId>
+            <version>1.10.0-0.2</version>
         </dependency>
     </dependencies>
 
