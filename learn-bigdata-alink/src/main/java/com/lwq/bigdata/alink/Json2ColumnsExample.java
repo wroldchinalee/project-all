@@ -30,7 +30,7 @@ public class Json2ColumnsExample {
         List<Row> result = inOp.link(new JsonValueBatchOp()
                 .setSkipFailed(true)
                 .setSelectedCol("col1").setOutputCols(new String[] {"name", "age"})
-                .setJsonPath(new String[] {"$.name", "$.age"})).collect();
+                .setJsonPath(new String[] {"$.age", "$.name"})).collect();
 
         for(Row r:result){
             System.out.println(r.toString());

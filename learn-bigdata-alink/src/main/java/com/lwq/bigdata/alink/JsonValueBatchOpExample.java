@@ -47,7 +47,7 @@ public class JsonValueBatchOpExample {
                 // 输出的字段
                 .setOutputCols(new String[]{"db", "table", "op", "data_id", "data_name"})
                 // 上面输出字段在json中的路径
-                .setJsonPath(new String[]{"$.db", "$.table", "$.op", "$.datas.id", "$.datas.name"})).collect();
+                .setJsonPath(new String[]{ "$.db", "$.table2", "$.op", "$.datas.id", "$.datas.name"})).collect();
         // 打印输出
         for (Row row : message) {
             System.out.println(row);

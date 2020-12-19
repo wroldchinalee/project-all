@@ -1,0 +1,4 @@
+public class WordCountLocal
+public static void main
+SparkConf sparkConf new SparkConf
+setMaster local
