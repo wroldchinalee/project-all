@@ -1,0 +1,78 @@
+{
+  "type": "object",
+  "properties": {
+    "__db": {
+      "type": "string"
+    },
+    "data": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "x": {
+            "type": "string"
+          },
+          "y": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
+
+
+
+{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "integer"
+    },
+    "idOrNull": {
+      "type": ["integer", "null"]
+    },
+    "name": {
+      "type": "string"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "time": {
+      "type": "string",
+      "format": "time"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "bytes": {
+      "type": "string",
+      "contentEncoding": "base64"
+    },
+    "numbers": {
+      "type": "array",
+      "items": {
+        "type": "integer"
+      }
+    },
+    "strings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "nested": {
+      "type": "object",
+      "properties": {
+        "booleanField": {
+          "type": "boolean"
+        },
+        "decimalField": {
+          "type": "number"
+        }
+      }
+    }
+  }
+}
