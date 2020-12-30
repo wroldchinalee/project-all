@@ -7,13 +7,14 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.StringSerializer;
 
 import java.util.Properties;
+import java.util.Random;
 
 /**
  * @author: LWQ
  * @create: 2020/12/18
- * @description: KafkaClient
+ * @description: MyKafkaProducer
  **/
-public class KafkaClient {
+public class MyKafkaProducer {
     private static boolean running = true;
 
     public static void main(String[] args) throws InterruptedException {
@@ -25,13 +26,16 @@ public class KafkaClient {
         properties.put("key.serializer", StringSerializer.class.getName());
         properties.put("value.serializer", StringSerializer.class.getName());
 
-        Producer<String, String> producer = new KafkaProducer<>(properties);
+        Producer<String, String> producer = new org.apache.kafka.clients.producer.KafkaProducer<>(properties);
 
 
         String topic = "test";
-        String value = "{\"__db\":\"dcbsdb\",\"data\":[{\"id\":\"1\"}]}";
-        ProducerRecord<String, String> record = new ProducerRecord<>(topic, value);
+//        String value = "{\"__db\":\"dcbsdb\",\"data\":[{\"id\":\"1\"}]}";
+        Random random = new Random();
         while (running) {
+            int id = random.nextInt(10) + 1;
+            String value = "{\"__db\":\"dcbsdb\",\"data\":[{\"id\":\"" + id + "\"}]}";
+            ProducerRecord<String, String> record = new ProducerRecord<>(topic, value);
             producer.send(record);
             Thread.sleep(1000);
         }
