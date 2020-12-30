@@ -153,19 +153,75 @@ __db,__table,__op,data
 
 **字段拉平限制**
 
-1)拉平的字段必须是第一层
+> 解析时会对数据中字段进行拉平处理，对array类型的字段，只能有一个进行拉平处理
+>
+> 需要指定是哪个字段进行拉平（字段中不能再包含嵌套的array类型），其他类型的字段
+>
+> 默认会进行拉平处理。
 
-2)拉平字段的的类型只能是数组或者对象
 
-如果是数组，数组中元素是object类型，会将每个字段提取拉平
 
-数组中元素是其他类型，不做任何处理
+假设输入数据为：
 
-如果是object类型，直接将每个字段提取拉平
+```json
+{
+	"schema": "dcbsdb",
+	"table": "xy",
+	"eventType": "update",
+	"before": {
+		"x": "1",
+		"y": "3",
+		"abc": {
+			"x": "2",
+			"y": "3"
+		},
+		"arr": [{
+				"a": "ss",
+				"b": "dd"
+			},
+			{
+				"a": "ff",
+				"b": "ee"
+			}
+		]
+	},
+	"after": {
+		"x": "4",
+		"y": "5"
+	},
+	"arr2": [{
+			"a": "ss",
+			"b": "dd"
+		},
+		{
+			"a": "ff",
+			"b": "ee"
+		}
+	]
+}
+```
 
-3)拉平的字段最多支持两个
 
-如果配置了两个的情况，两个字段中属性的名称和个数需要一致
+
+在输入数据中，有两个array类型的字段，一个是arr字段，另一个是arr2字段。
+
+这个时候需要指定对哪个array字段进行拉平，其他的array字段不做处理。
+
+
+
+当设置arr字段为拉平字段时，数据解析后的结果如下：
+
+| schema | table | eventType | before.x | before.y | before.abc.x | before.abc.y | before.arr.a | before.arr.b | after.x | after.y | arr2                                            |
+| ------ | ----- | --------- | -------- | -------- | ------------ | ------------ | ------------ | ------------ | ------- | ------- | ----------------------------------------------- |
+| dcbsdb | xy    | update    | 1        | 3        | 2            | 3            | ss           | dd           | 4       | 5       | [{"a": "ss","b":  "dd"},{"a": "ff","b":  "ee"}] |
+| dcbsdb | xy    | update    | 1        | 3        | 2            | 3            | ff           | ee           | 4       | 5       | [{"a": "ss","b":  "dd"},{"a": "ff","b":  "ee"}] |
+
+当设置arr2字段为拉平字段时，数据解析后的结果如下：
+
+| schema | table | eventType | before.x | before.y | before.abc.x | before.abc.y | before.arr                                      | after.x | after.y | arr2.a | arr2.b |
+| ------ | ----- | --------- | -------- | -------- | ------------ | ------------ | ----------------------------------------------- | ------- | ------- | ------ | ------ |
+| dcbsdb | xy    | update    | 1        | 3        | 2            | 3            | [{"a": "ss","b":  "dd"},{"a": "ff","b":  "ee"}] | 4       | 5       | ss     | dd     |
+| dcbsdb | xy    | update    | 1        | 3        | 2            | 3            | [{"a": "ss","b":  "dd"},{"a": "ff","b":  "ee"}] | 4       | 5       | ff     | ee     |
 
 
 
@@ -201,7 +257,19 @@ __db,__table,__op,data
 
 管理台中数据类型与flink在json-schema是一致的
 
-![image-20201228163745478](E:\source_code\project-all\learn-bigdata-flink\doc\image-20201228163745478.png)
+| JSON schema                  |
+| ---------------------------- |
+| object                       |
+| boolean                      |
+| array                        |
+| number                       |
+| integer                      |
+| string                       |
+| string with format:date-time |
+| string with format:date      |
+| string with format:time      |
+| string with format:base64    |
+| null                         |
 
 配置目前包含以下配置项：
 
@@ -212,7 +280,7 @@ __db,__table,__op,data
 | alias    | 别名，需要具有唯一性                                         |
 | type     | 字段类型，array和表示时间的string类型特殊，array需要在typeInfo中额外指定array里的元素类型，而时间字符串支持三种格式 |
 | typeInfo | 表示一些类型的额外信息，如array，时间字符串                  |
-| flat     | 字段是否可以拉平                                             |
+| flat     | 当jsonSchema中包含多个array类型字段时，需要指定flat的字段    |
 
 时间字符串目前支持三种格式，如下：
 
@@ -232,10 +300,10 @@ __db,__table,__op,data
 | table     | table     | __table    | string |          |      |
 | eventType | eventType | __op       | string |          |      |
 | timestamp | timestamp | __event_ts | number |          |      |
-| before    | before    | before     | object |          | √    |
+| before    | before    | before     | object |          |      |
 | before.x  | x         | before_x   | string |          |      |
 | before.y  | y         | before_y   | string |          |      |
-| after     | after     | after      | object |          | √    |
+| after     | after     | after      | object |          |      |
 | after.x   | x         | x          | string |          |      |
 | after.y   | y         | y          | string |          |      |
 
@@ -293,7 +361,7 @@ __db,__table,__op,data
 | __table       | __table      | __table    | string |                  |      |
 | __op          | __op         | __op       | string |                  |      |
 | __binlogTime  | __binlogTime | __event_ts | string | format:date-time |      |
-| data          | data         | data       | array  | itemType:object  | √    |
+| data          | data         | data       | array  | itemType:object  |      |
 | data.before_x | before_x     | before_x   | string |                  |      |
 | data.before_y | before_y     | before_y   | string |                  |      |
 | data.x        | x            | x          | string |                  |      |
