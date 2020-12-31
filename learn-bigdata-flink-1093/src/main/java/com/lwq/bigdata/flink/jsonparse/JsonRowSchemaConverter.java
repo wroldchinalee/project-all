@@ -26,6 +26,8 @@ package com.lwq.bigdata.flink.jsonparse;
 
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeinfo.Types;
+import org.apache.flink.api.java.typeutils.RowTypeInfo;
+import org.apache.flink.shaded.guava18.com.google.common.collect.Lists;
 import org.apache.flink.types.Row;
 import org.apache.flink.util.Preconditions;
 
@@ -34,24 +36,17 @@ import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.JsonNode;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Converts a JSON schema into Flink's type information. It uses {@link Row} for representing
  * objects and tuple arrays.
- *
+ * <p>
  * <p>Note: This converter implements just a subset of the JSON schema specification.
  * Union types (as well as "allOf", "anyOf", "not") are not supported yet. Simple
  * references that link to a common definition in the document are supported. "oneOf" and
  * arrays of types are only supported for specifying nullability.
- *
+ * <p>
  * <p>This converter has been developed for JSON Schema draft-07 but also includes keywords of
  * older drafts to be as compatible as possible.
  */
@@ -96,7 +91,7 @@ public final class JsonRowSchemaConverter {
     /**
      * Converts a JSON schema into Flink's type information. Throws an exception if the schema
      * cannot converted because of loss of precision or too flexible schema.
-     *
+     * <p>
      * <p>The converter can resolve simple schema references to solve those cases where entities
      * are defined at the beginning and then used throughout a document.
      */
@@ -122,34 +117,32 @@ public final class JsonRowSchemaConverter {
         // we use a set here to unify types (e.g. types that just add metadata such as 'multipleOf')
         final Set<TypeInformation<?>> typeSet = new HashSet<>();
 
-        System.out.printf("location:%s\n", location);
-        // search for ref
-        final Optional<JsonNode> ref;
-        if (node.has(REF) && node.get(REF).isTextual()) {
-            // try a simple ref resolver to solve those cases where entities are defined at
-            // the beginning and then used throughout a document
-            ref = Optional.of(resolveReference(node.get(REF).asText(), node, root));
-        } else {
-            ref = Optional.empty();
-        }
-
+//        System.out.printf("location:%s\n", location);
         // use TYPE of this node
+        // 1.判断node中是否有type字段
         if (node.has(TYPE)) {
             final JsonNode typeNode = node.get(TYPE);
 
             List<String> types = new ArrayList<>();
             // array of types
+            // TODO type字段的值只能是string或array，
+            // TODO 当字段的值是array时,里面的元素类型只能是string
+            // TODO type字段的值是否为array，这种情况基本没有，可忽略
             if (typeNode.isArray()) {
+                // 如果是array类型，
                 final Iterator<JsonNode> elements = typeNode.elements();
                 while (elements.hasNext()) {
                     types.add(elements.next().asText());
                 }
             }
+            // type字段的值是否为文本
             // single type
+            // 获取type的值并加到类型列表
             else if (typeNode.isTextual()) {
                 types.add(typeNode.asText());
             }
 
+            // 遍历类型列表
             for (String type : types) {
                 // set field type
                 switch (type) {
@@ -188,21 +181,7 @@ public final class JsonRowSchemaConverter {
                 }
             }
         }
-        // use TYPE of reference as fallback if present
-        else {
-            ref.filter(r -> r.has(TYPE)).ifPresent(r -> typeSet.add(convertType(node.get(REF).asText(), r, root)));
-        }
 
-        // simple interpretation of ONE_OF for supporting "object or null"
-        if (node.has(ONE_OF) && node.get(ONE_OF).isArray()) {
-            final TypeInformation<?>[] types = convertTypes(location + '/' + ONE_OF, node.get(ONE_OF), root);
-            typeSet.addAll(Arrays.asList(types));
-        }
-        // use ONE_OF of reference as fallback
-        else if (ref.isPresent() && ref.get().has(ONE_OF) && ref.get().get(ONE_OF).isArray()) {
-            final TypeInformation<?>[] types = convertTypes(node.get(REF).asText() + '/' + ONE_OF, ref.get().get(ONE_OF), root);
-            typeSet.addAll(Arrays.asList(types));
-        }
 
         // validate no union types or extending
         if (node.has(ALL_OF) || node.has(ANY_OF) || node.has(NOT) || node.has(EXTENDS) || node.has(DISALLOW)) {
@@ -221,6 +200,7 @@ public final class JsonRowSchemaConverter {
         }
 
         // return the first non-void type or void
+        // 返回类型信息
         if (types.size() == 2 && types.get(0) == Types.VOID) {
             return types.get(1);
         } else {
@@ -237,12 +217,20 @@ public final class JsonRowSchemaConverter {
             throw new IllegalArgumentException(
                     "Invalid '" + PROPERTIES + "' property for object type in node: " + location);
         }
+        // 获得object里面的字段
         final JsonNode props = node.get(PROPERTIES);
         final String[] names = new String[props.size()];
         final TypeInformation<?>[] types = new TypeInformation[props.size()];
 
+        // 遍历里面的字段
         final Iterator<Map.Entry<String, JsonNode>> fieldIter = props.fields();
         int i = 0;
+        ArrayList<String> resultNames = new ArrayList<>();
+        ArrayList<TypeInformation<?>> resultTypes = new ArrayList<>();
+        // 里面的主要代码为：
+        // 1.获取字段的key，获取字段的jsonNode
+        // 2.对字段的jsonNode进行转换，将其转换成typeInfo
+        // 3.将转换后的typeInfo放到数组
         while (fieldIter.hasNext()) {
             final Map.Entry<String, JsonNode> subNode = fieldIter.next();
 
@@ -250,8 +238,22 @@ public final class JsonRowSchemaConverter {
             names[i] = subNode.getKey();
 
             // set type
-            types[i] = convertType(location + '/' + subNode.getKey(), subNode.getValue(), root);
-
+            TypeInformation<?> typeInfo = convertType(location + '/' + subNode.getKey(), subNode.getValue(), root);
+            types[i] = typeInfo;
+//            System.out.println(names[i]);
+//            System.out.println(typeInfo.getTypeClass());
+            if (types[i].getTypeClass().equals(Row.class)) {
+                RowTypeInfo rowType = (RowTypeInfo) typeInfo;
+                int innerArity = rowType.getArity();
+                String[] innerFieldNames = rowType.getFieldNames();
+                for (int j = 0; j < innerArity; j++) {
+                    resultNames.add(innerFieldNames[j]);
+                    resultTypes.add(rowType.getTypeAt(j));
+                }
+            } else {
+                resultNames.add(location + '/' + subNode.getKey());
+                resultTypes.add(typeInfo);
+            }
             i++;
         }
 
@@ -261,9 +263,13 @@ public final class JsonRowSchemaConverter {
             throw new IllegalArgumentException(
                     "An object must not allow additional properties in node: " + location);
         }
-
-        return Types.ROW_NAMED(names, types);
+//        return Types.ROW_NAMED(names, types);
+        String[] namesArr = new String[resultNames.size()];
+        TypeInformation<?>[] typesArr = new TypeInformation[resultTypes.size()];
+        return Types.ROW_NAMED(resultNames.toArray(namesArr), resultTypes.toArray(typesArr));
     }
+
+
 
     private static TypeInformation<?> convertArray(String location, JsonNode node, JsonNode root) {
         // validate items
@@ -271,10 +277,14 @@ public final class JsonRowSchemaConverter {
             throw new IllegalArgumentException(
                     "Arrays must specify an '" + ITEMS + "' property in node: " + location);
         }
+        // 获得items节点
+        // items的node:{"type":"object","properties":{"ee":{"type":"integer"},"ff":{"type":"string"}}}
         final JsonNode items = node.get(ITEMS);
 
         // list (translated to object array)
+        // TODO items节点类型是object，用到的主要是这个
         if (items.isObject()) {
+            // 转换类型，获取array里面的元素类型
             final TypeInformation<?> elementType = convertType(
                     location + '/' + ITEMS,
                     items,
@@ -335,23 +345,6 @@ public final class JsonRowSchemaConverter {
         }
     }
 
-    private static JsonNode resolveReference(String ref, JsonNode origin, JsonNode root) {
-        if (!ref.startsWith("#")) {
-            throw new IllegalArgumentException("Only JSON schemes with simple references " +
-                    "(one indirection in the same document) are supported yet. But was: " + ref);
-        }
-        final String path = ref.substring(1);
-        final JsonNode foundNode = root.at(path);
-        if (foundNode.isMissingNode()) {
-            throw new IllegalArgumentException("Could not find reference: " + ref);
-        }
-        // prevent obvious cyclic references
-        if (foundNode == origin) {
-            throw new IllegalArgumentException("Cyclic references are not supported:" + ref);
-        }
-        return foundNode;
-    }
-
     private static TypeInformation<?>[] convertTypes(String location, JsonNode arrayNode, JsonNode root) {
         final TypeInformation<?>[] types = new TypeInformation[arrayNode.size()];
         final Iterator<JsonNode> elements = arrayNode.elements();
@@ -365,6 +358,43 @@ public final class JsonRowSchemaConverter {
             i += 1;
         }
         return types;
+    }
+
+    private static TypeInformation<Row> convertObject2(String location, JsonNode node, JsonNode root) {
+        // validate properties
+        if (!node.has(PROPERTIES)) {
+            return Types.ROW();
+        }
+        if (!node.isObject()) {
+            throw new IllegalArgumentException(
+                    "Invalid '" + PROPERTIES + "' property for object type in node: " + location);
+        }
+        final JsonNode props = node.get(PROPERTIES);
+        final String[] names = new String[props.size()];
+        final TypeInformation<?>[] types = new TypeInformation[props.size()];
+
+        final Iterator<Map.Entry<String, JsonNode>> fieldIter = props.fields();
+        int i = 0;
+        while (fieldIter.hasNext()) {
+            final Map.Entry<String, JsonNode> subNode = fieldIter.next();
+
+            // set field name
+            names[i] = subNode.getKey();
+
+            // set type
+            types[i] = convertType(location + '/' + subNode.getKey(), subNode.getValue(), root);
+
+            i++;
+        }
+
+        // validate that object does not contain additional properties
+        if (node.has(ADDITIONAL_PROPERTIES) && node.get(ADDITIONAL_PROPERTIES).isBoolean() &&
+                node.get(ADDITIONAL_PROPERTIES).asBoolean()) {
+            throw new IllegalArgumentException(
+                    "An object must not allow additional properties in node: " + location);
+        }
+
+        return Types.ROW_NAMED(names, types);
     }
 }
 

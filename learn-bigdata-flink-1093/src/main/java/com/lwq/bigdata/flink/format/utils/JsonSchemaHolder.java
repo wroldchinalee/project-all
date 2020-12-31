@@ -52,4 +52,71 @@ public class JsonSchemaHolder {
             "\t\t\"type\": \"string\"\n" +
             "\t}\n" +
             "}";
+
+    public static final String JSON_SCHEMA4 = "{\n" +
+            "\t\"type\": \"object\",\n" +
+            "\t\"properties\": {\n" +
+            "\t\t\"__db\": {\n" +
+            "\t\t\t\"type\": \"string\"\n" +
+            "\t\t},\n" +
+            "\t\t\"data\": {\n" +
+            "\t\t\t\"type\": \"object\",\n" +
+            "\t\t\t\"properties\": {\n" +
+            "\t\t\t\t\"aa\": {\n" +
+            "\t\t\t\t\t\"type\": \"string\"\n" +
+            "\t\t\t\t},\n" +
+            "\t\t\t\t\"bb\": {\n" +
+            "\t\t\t\t\t\"type\": \"object\",\n" +
+            "\t\t\t\t\t\"properties\": {\n" +
+            "\t\t\t\t\t\t\"cc\": {\n" +
+            "\t\t\t\t\t\t\t\"type\": \"string\"\n" +
+            "\t\t\t\t\t\t},\n" +
+            "\t\t\t\t\t\t\"d\": {\n" +
+            "\t\t\t\t\t\t\t\"type\": \"object\",\n" +
+            "\t\t\t\t\t\t\t\"properties\": {\n" +
+            "\t\t\t\t\t\t\t\t\"ee\": {\n" +
+            "\t\t\t\t\t\t\t\t\t\"type\": \"integer\"\n" +
+            "\t\t\t\t\t\t\t\t},\n" +
+            "\t\t\t\t\t\t\t\t\"ff\": {\n" +
+            "\t\t\t\t\t\t\t\t\t\"type\": \"string\"\n" +
+            "\t\t\t\t\t\t\t\t}\n" +
+            "\t\t\t\t\t\t\t}\n" +
+            "\t\t\t\t\t\t}\n" +
+            "\t\t\t\t\t}\n" +
+            "\t\t\t\t}\n" +
+            "\t\t\t}\n" +
+            "\t\t}\n" +
+            "\t}\n" +
+            "}";
+
+    public static final String JSON_SCHEMA5 = "{\n" +
+            "\t\"type\": \"object\",\n" +
+            "\t\"properties\": {\n" +
+            "\t\t\"__db\": {\n" +
+            "\t\t\t\"type\": \"string\"\n" +
+            "\t\t},\n" +
+            "\t\t\"data\": {\n" +
+            "\t\t\t\"type\": \"object\",\n" +
+            "\t\t\t\"properties\": {\n" +
+            "\t\t\t\t\"aa\": {\n" +
+            "\t\t\t\t\t\"type\": \"string\"\n" +
+            "\t\t\t\t},\n" +
+            "\t\t\t\t\"bb\": {\n" +
+            "\t\t\t\t\t\"type\": \"array\",\n" +
+            "\t\t\t\t\t\"items\": {\n" +
+            "\t\t\t\t\t\t\"type\": \"object\",\n" +
+            "\t\t\t\t\t\t\"properties\": {\n" +
+            "\t\t\t\t\t\t\t\"ee\": {\n" +
+            "\t\t\t\t\t\t\t\t\"type\": \"integer\"\n" +
+            "\t\t\t\t\t\t\t},\n" +
+            "\t\t\t\t\t\t\t\"ff\": {\n" +
+            "\t\t\t\t\t\t\t\t\"type\": \"string\"\n" +
+            "\t\t\t\t\t\t\t}\n" +
+            "\t\t\t\t\t\t}\n" +
+            "\t\t\t\t\t}\n" +
+            "\t\t\t\t}\n" +
+            "\t\t\t}\n" +
+            "\t\t}\n" +
+            "\t}\n" +
+            "}";
 }

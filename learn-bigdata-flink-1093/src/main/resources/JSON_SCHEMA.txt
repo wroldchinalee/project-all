@@ -76,3 +76,71 @@
     }
   }
 }
+
+
+{
+	"type": "object",
+	"properties": {
+		"__db": {
+			"type": "string"
+		},
+		"data": {
+			"type": "obejct",
+			"properties": {
+				"aa": {
+					"type": "string"
+				},
+				"bb": {
+					"type": "object",
+					"properties": {
+						"cc": {
+							"type": "string"
+						},
+						"d": {
+							"type": "object",
+							"properties": {
+								"ee": {
+									"type": "integer"
+								},
+								"ff": {
+									"type": "string"
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+{
+	"type": "object",
+	"properties": {
+		"__db": {
+			"type": "string"
+		},
+		"data": {
+			"type": "object",
+			"properties": {
+				"aa": {
+					"type": "string"
+				},
+				"bb": {
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"ee": {
+								"type": "integer"
+							},
+							"ff": {
+								"type": "string"
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}
