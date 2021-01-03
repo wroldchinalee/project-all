@@ -388,7 +388,12 @@ public class JsonParser implements DeserializationSchema<Row> {
                 String fieldName = fieldNames[i];
 //                JsonNode field = node.get(fieldName);
                 JsonNode field = jsonByPath(fieldName, node);
-                Object convertField = convertField(mapper, fieldConverters.get(i), fieldName, field);
+                Object convertField = null;
+                if (field.isArray()) {
+                    convertField = field.toString();
+                }else{
+                    convertField = convertField(mapper, fieldConverters.get(i), fieldName, field);
+                }
                 row.setField(i, convertField);
             }
 
@@ -396,6 +401,13 @@ public class JsonParser implements DeserializationSchema<Row> {
         };
     }
 
+    /**
+     * 从rootNode中根据path找到JsonNode
+     *
+     * @param path
+     * @param root
+     * @return
+     */
     private JsonNode jsonByPath(String path, ObjectNode root) {
         String[] paths = path.split("/");
         if (paths.length == 0) {
@@ -513,10 +525,10 @@ public class JsonParser implements DeserializationSchema<Row> {
             while (elements.hasNext()) {
                 JsonNode next = elements.next();
                 System.out.println(next);
-                if(next.isObject()){
+                if (next.isObject()) {
                     ObjectNode objectNode = (ObjectNode) next;
                     Iterator<String> fieldNames = objectNode.fieldNames();
-                    while (fieldNames.hasNext()){
+                    while (fieldNames.hasNext()) {
                         System.out.println(fieldNames.next());
                     }
                 }

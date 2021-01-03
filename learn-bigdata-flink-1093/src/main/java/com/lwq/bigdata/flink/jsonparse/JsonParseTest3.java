@@ -26,6 +26,7 @@ public class JsonParseTest3 {
 
         JsonParser jsonParser = new JsonParser.Builder(JsonSchemaHolder.JSON_SCHEMA5).build();
         RowTypeInfo producedType = ((RowTypeInfo) jsonParser.getProducedType());
+        System.out.println("productType:" + producedType);
         System.out.println(Arrays.toString(producedType.getFieldNames()));
         SingleOutputStreamOperator<Row> resultStream = streamSource.map(new MapFunction<String, Row>() {
             @Override
