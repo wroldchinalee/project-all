@@ -21,7 +21,39 @@
   }
 }
 
-
+{
+	"type": "object",
+	"properties": {
+		"__db": {
+			"type": "string"
+		},
+		"data": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"x": {
+						"type": "string"
+					},
+					"y": {
+						"type": "string"
+					}
+				}
+			}
+		},
+		"data2": {
+			"type": "object",
+			"properties": {
+				"x": {
+					"type": "string"
+				},
+				"y": {
+					"type": "string"
+				}
+			}
+		}
+	}
+}
 
 {
   "type": "object",
