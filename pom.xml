@@ -16,6 +16,7 @@
         <module>learn-java-mix</module>
         <!--<module>project-alink-mini</module>-->
         <module>learn-bigdata-flink</module>
+        <module>learn-bigdata-flink-1093</module>
     </modules>
 
 
