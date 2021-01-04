@@ -52,10 +52,7 @@ import java.time.LocalTime;
 import java.time.ZoneOffset;
 import java.time.temporal.TemporalAccessor;
 import java.time.temporal.TemporalQueries;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.lwq.bigdata.flink.jsonparse.TimeFormats.RFC3339_TIMESTAMP_FORMAT;
@@ -69,10 +66,10 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
 
 /**
  * Deserialization schema from JSON to Flink types.
- *
+ * <p>
  * <p>Deserializes a <code>byte[]</code> message as a JSON object and reads
  * the specified fields.
- *
+ * <p>
  * <p>Failures during deserialization are forwarded as wrapped IOExceptions.
  */
 @PublicEvolving
@@ -94,7 +91,6 @@ public class JsonParser implements DeserializationSchema<Row> {
 
     private JsonParser.DeserializationRuntimeConverter runtimeConverter;
 
-    private String flatCol = "data";
 
     private JsonParser(
             TypeInformation<Row> typeInfo,
@@ -183,7 +179,7 @@ public class JsonParser implements DeserializationSchema<Row> {
 
         /**
          * Configures schema to fail if a JSON field is missing.
-         *
+         * <p>
          * <p>By default, a missing field is ignored and the field is set to null.
          */
         public JsonParser.Builder failOnMissingField() {
@@ -215,7 +211,7 @@ public class JsonParser implements DeserializationSchema<Row> {
     }
 
 	/*
-		Runtime converter
+        Runtime converter
 	 */
 
     /**
@@ -283,8 +279,8 @@ public class JsonParser implements DeserializationSchema<Row> {
                 .map(this::createConverter)
                 .collect(Collectors.toList());
 
-//        return assembleRowConverter(typeInfo.getFieldNames(), fieldConverters);
-        return assembleRowListConverter(typeInfo.getFieldNames(), fieldConverters);
+        return assembleRowConverter(typeInfo.getFieldNames(), fieldConverters);
+//        return assembleRowListConverter(typeInfo.getFieldNames(), fieldConverters);
     }
 
     private JsonParser.DeserializationRuntimeConverter createFallbackConverter(Class<?> valueType) {
@@ -390,13 +386,52 @@ public class JsonParser implements DeserializationSchema<Row> {
             Row row = new Row(arity);
             for (int i = 0; i < arity; i++) {
                 String fieldName = fieldNames[i];
-                JsonNode field = node.get(fieldName);
-                Object convertField = convertField(mapper, fieldConverters.get(i), fieldName, field);
+//                JsonNode field = node.get(fieldName);
+                JsonNode field = jsonByPath(fieldName, node);
+                Object convertField = null;
+                if (field.isArray()) {
+                    convertField = field.toString();
+                }else{
+                    convertField = convertField(mapper, fieldConverters.get(i), fieldName, field);
+                }
                 row.setField(i, convertField);
             }
 
             return row;
         };
+    }
+
+    /**
+     * 从rootNode中根据path找到JsonNode
+     *
+     * @param path
+     * @param root
+     * @return
+     */
+    private JsonNode jsonByPath(String path, ObjectNode root) {
+        String[] paths = path.split("/");
+        if (paths.length == 0) {
+            return null;
+        }
+        if (!paths[0].equals("<root>")) {
+            return null;
+        }
+        JsonNode currNode = null;
+        int index = 0;
+        while (index < paths.length) {
+            String currPath = paths[index];
+            if (currPath.equals("<root>")) {
+                currNode = root;
+            } else {
+                if (currNode.isArray()) {
+                    currNode = currNode.get(currPath);
+                } else {
+                    currNode = currNode.get(currPath);
+                }
+            }
+            index++;
+        }
+        return currNode;
     }
 
     private JsonParser.DeserializationRuntimeConverter assembleRowListConverter(
@@ -406,18 +441,61 @@ public class JsonParser implements DeserializationSchema<Row> {
             ObjectNode node = (ObjectNode) jsonNode;
 
             int arity = fieldNames.length;
-            Row row = new Row(arity);
+            ArrayList<Object> list = new ArrayList<>();
+
             for (int i = 0; i < arity; i++) {
                 String fieldName = fieldNames[i];
                 JsonNode field = node.get(fieldName);
                 Object convertField = convertField(mapper, fieldConverters.get(i), fieldName, field);
-                if (fieldName.equals(flatCol)) {
-                    System.out.println(fieldName);
-                    System.out.println(fieldConverters.get(i));
+                if (convertField instanceof Row) {
+                    int innerArity = ((Row) convertField).getArity();
+                    for (int j = 0; j < innerArity; j++) {
+                        Object innerField = ((Row) convertField).getField(j);
+                        list.add(innerField);
+                    }
+                } else {
+                    list.add(convertField);
                 }
-                row.setField(i, convertField);
+//                row.setField(i, convertField);
             }
+            Row row = new Row(list.size());
+            int flatArity = row.getArity();
+            for (int i = 0; i < flatArity; i++) {
+                row.setField(i, list.get(i));
+            }
+            return row;
+        };
+    }
 
+    private JsonParser.DeserializationRuntimeConverter assembleRowListConverter2(
+            String[] fieldNames,
+            List<JsonParser.DeserializationRuntimeConverter> fieldConverters) {
+        return (mapper, jsonNode) -> {
+            ObjectNode node = (ObjectNode) jsonNode;
+
+            int arity = fieldNames.length;
+            ArrayList<Object> list = new ArrayList<>();
+
+            for (int i = 0; i < arity; i++) {
+                String fieldName = fieldNames[i];
+                JsonNode field = node.get(fieldName);
+                Object convertField = convertField(mapper, fieldConverters.get(i), fieldName, field);
+                if (convertField instanceof Row) {
+                    int innerArity = ((Row) convertField).getArity();
+                    for (int j = 0; j < innerArity; j++) {
+                        Object innerField = ((Row) convertField).getField(j);
+                        list.add(innerField);
+                    }
+                } else {
+                    list.add(convertField);
+                }
+//                row.setField(i, convertField);
+            }
+            Row row = new Row(list.size());
+            int flatArity = row.getArity();
+            for (int i = 0; i < flatArity; i++) {
+                row.setField(i, list.get(i));
+            }
             return row;
         };
     }
@@ -442,7 +520,25 @@ public class JsonParser implements DeserializationSchema<Row> {
     private JsonParser.DeserializationRuntimeConverter assembleArrayConverter(JsonParser.DeserializationRuntimeConverter elementConverter) {
         return (mapper, jsonNode) -> {
             ArrayNode node = (ArrayNode) jsonNode;
+            System.out.println("--------array---------");
+            Iterator<JsonNode> elements = node.elements();
+            while (elements.hasNext()) {
+                JsonNode next = elements.next();
+                System.out.println(next);
+                if (next.isObject()) {
+                    ObjectNode objectNode = (ObjectNode) next;
+                    Iterator<String> fieldNames = objectNode.fieldNames();
+                    while (fieldNames.hasNext()) {
+                        System.out.println(fieldNames.next());
+                    }
+                }
 
+
+            }
+
+            stream(spliterator(node.elements(), node.size(), 0), false)
+                    .map(innerNode -> elementConverter.convert(mapper, innerNode))
+                    .toArray();
             return stream(spliterator(node.elements(), node.size(), 0), false)
                     .map(innerNode -> elementConverter.convert(mapper, innerNode))
                     .toArray();
