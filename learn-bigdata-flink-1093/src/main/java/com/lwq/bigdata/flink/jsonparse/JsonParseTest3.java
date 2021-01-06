@@ -1,11 +1,8 @@
 package com.lwq.bigdata.flink.jsonparse;
 
 import com.lwq.bigdata.flink.format.utils.JsonSchemaHolder;
-import com.lwq.bigdata.flink.jsonparse.JsonParser;
 import org.apache.flink.api.common.functions.MapFunction;
-import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
-import org.apache.flink.formats.json.JsonRowDeserializationSchema;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -22,9 +19,9 @@ public class JsonParseTest3 {
     public static void main(String[] args) throws Exception {
         StreamExecutionEnvironment environment = StreamExecutionEnvironment.getExecutionEnvironment();
         environment.setParallelism(1);
-        DataStreamSource<String> streamSource = environment.readTextFile("F:\\src\\tuling\\project-all\\learn-bigdata-flink-1093\\src\\main\\resources\\input3.txt");
+        DataStreamSource<String> streamSource = environment.readTextFile("E:\\source_code\\project-all\\learn-bigdata-flink-1093\\src\\main\\resources\\input4.txt");
 
-        JsonParser jsonParser = new JsonParser.Builder(JsonSchemaHolder.JSON_SCHEMA5).build();
+        JsonParser jsonParser = new JsonParser.Builder(JsonSchemaHolder.JSON_SCHEMA7).build();
         RowTypeInfo producedType = ((RowTypeInfo) jsonParser.getProducedType());
         System.out.println("productType:" + producedType);
         System.out.println(Arrays.toString(producedType.getFieldNames()));

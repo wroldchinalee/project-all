@@ -383,17 +383,18 @@ public class JsonParser implements DeserializationSchema<Row> {
             ObjectNode node = (ObjectNode) jsonNode;
 
             int arity = fieldNames.length;
+            System.out.println("fieldNames:" + Arrays.toString(fieldNames));
             Row row = new Row(arity);
             for (int i = 0; i < arity; i++) {
                 String fieldName = fieldNames[i];
-//                JsonNode field = node.get(fieldName);
                 JsonNode field = jsonByPath(fieldName, node);
-                Object convertField = null;
-                if (field.isArray()) {
-                    convertField = field.toString();
-                }else{
-                    convertField = convertField(mapper, fieldConverters.get(i), fieldName, field);
-                }
+//                JsonNode field = node.get(fieldName);
+                Object convertField;
+//                if (field.isArray()) {
+//                    convertField = convertField(mapper, fieldConverters.get(i), fieldName, node);
+//                } else {
+                convertField = convertField(mapper, fieldConverters.get(i), fieldName, field);
+//                }
                 row.setField(i, convertField);
             }
 
@@ -413,15 +414,15 @@ public class JsonParser implements DeserializationSchema<Row> {
         if (paths.length == 0) {
             return null;
         }
-        if (!paths[0].equals("<root>")) {
-            return null;
-        }
-        JsonNode currNode = null;
+//        if (!paths[0].equals("<root>")) {
+//            return null;
+//        }
+        JsonNode currNode = root;
         int index = 0;
         while (index < paths.length) {
             String currPath = paths[index];
             if (currPath.equals("<root>")) {
-                currNode = root;
+//                currNode = root;
             } else {
                 if (currNode.isArray()) {
                     currNode = currNode.get(currPath);
@@ -519,6 +520,7 @@ public class JsonParser implements DeserializationSchema<Row> {
 
     private JsonParser.DeserializationRuntimeConverter assembleArrayConverter(JsonParser.DeserializationRuntimeConverter elementConverter) {
         return (mapper, jsonNode) -> {
+
             ArrayNode node = (ArrayNode) jsonNode;
             System.out.println("--------array---------");
             Iterator<JsonNode> elements = node.elements();

@@ -1,0 +1,80 @@
+{
+	"type": "object",
+	"properties": {
+		"__db": {
+			"type": "string"
+		},
+		"__table": {
+			"type": "string"
+		},
+		"__op": {
+			"type": "string"
+		},
+		"__binlogTime": {
+			"type": "string",
+			"format": "date-time"
+		},
+		"data": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"before_x": {
+						"type": "string"
+					},
+					"before_y": {
+						"type": "string"
+					},
+					"x": {
+						"type": "string"
+					},
+					"y": {
+						"type": "string"
+					}
+				}
+			}
+		}
+	}
+}
+
+
+
+{
+	"type": "object",
+	"properties": {
+		"schema": {
+			"type": "string"
+		},
+		"table": {
+			"type": "string"
+		},
+		"eventType": {
+			"type": "string"
+		},
+		"timestamp": {
+			"type": "number"
+		},
+		"before": {
+			"type": "object",
+			"properties": {
+				"x": {
+					"type": "string"
+				},
+				"y": {
+					"type": "string"
+				}
+			}
+		},
+		"after": {
+			"type": "object",
+			"properties": {
+				"x": {
+					"type": "string"
+				},
+				"y": {
+					"type": "string"
+				}
+			}
+		}
+	}
+}

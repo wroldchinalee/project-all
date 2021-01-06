@@ -3,22 +3,13 @@ package com.lwq.bigdata.flink.format;
 import com.lwq.bigdata.flink.format.utils.JsonSchemaHolder;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
-import org.apache.flink.api.common.typeutils.CompositeType;
+import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
-import org.apache.flink.formats.json.JsonNodeDeserializationSchema;
 import org.apache.flink.formats.json.JsonRowDeserializationSchema;
-import org.apache.flink.formats.json.JsonRowSchemaConverter;
-import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.JsonNode;
-import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.node.ObjectNode;
-import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.table.api.Table;
-import org.apache.flink.table.api.java.StreamTableEnvironment;
 import org.apache.flink.types.Row;
-
-import java.util.ArrayList;
 
 /**
  * @author: LWQ
@@ -63,19 +54,35 @@ class JsonDeserFunction implements MapFunction<String, Row> {
             TypeInformation<?>[] fieldTypes = rowTypeInfo.getFieldTypes();
             for (TypeInformation<?> fieldType : fieldTypes) {
                 System.out.printf("fieldType:%s\n", fieldType);
+                System.out.println(fieldType.getTypeClass());
+                if (fieldType.equals(Types.OBJECT_ARRAY(Types.ROW()))) {
+                }
             }
 
-            System.out.println("-----------------flat---------------------");
-            ArrayList<CompositeType.FlatFieldDescriptor> list = new ArrayList<>();
-            rowTypeInfo.getFlatFields("data[0].*", 0, list);
-            for (CompositeType.FlatFieldDescriptor flatFieldDescriptor : list) {
-                System.out.println(flatFieldDescriptor);
-            }
+//            System.out.println("-----------------flat---------------------");
+//            ArrayList<CompositeType.FlatFieldDescriptor> list = new ArrayList<>();
+//            rowTypeInfo.getFlatFields("data", 0, list);
+//            for (CompositeType.FlatFieldDescriptor flatFieldDescriptor : list) {
+//                System.out.println(flatFieldDescriptor);
+//            }
             System.out.println("-----------------------------------");
             count++;
 
         }
         Row row = deserSchema.deserialize(bytes);
+
+        int arity = row.getArity();
+        for (int i = 0; i < arity; i++) {
+            Object field = row.getField(i);
+            System.out.println(field.getClass());
+            if(field instanceof Object[]){
+                Object[] objArray = (Object[]) field;
+                for (int j = 0; j < objArray.length; j++) {
+                    Row tempRow = (Row) objArray[j];
+                    System.out.println(tempRow);
+                }
+            }
+        }
 
         System.out.println(row);
 

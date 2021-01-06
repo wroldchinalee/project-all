@@ -21,7 +21,39 @@
   }
 }
 
-
+{
+	"type": "object",
+	"properties": {
+		"__db": {
+			"type": "string"
+		},
+		"data": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"x": {
+						"type": "string"
+					},
+					"y": {
+						"type": "string"
+					}
+				}
+			}
+		},
+		"data2": {
+			"type": "object",
+			"properties": {
+				"x": {
+					"type": "string"
+				},
+				"y": {
+					"type": "string"
+				}
+			}
+		}
+	}
+}
 
 {
   "type": "object",
@@ -141,6 +173,89 @@
 					}
 				}
 			}
+		}
+	}
+}
+
+
+{
+	"aa": {
+		"bb": {
+			"cc": 123,
+			"dd": "dd1",
+			"ff": [{
+					"gg": "gg1",
+					"hh": "hh1"
+				},
+				{
+					"gg": "gg2",
+					"hh": "hh2"
+				}
+			]
+		},
+		"ee": {
+			"jj": "jj1",
+			"kk": "kk1"
+		},
+		"ll": "ll1"
+	},
+	"ii": "asfaf"
+}
+
+
+{
+	"type": "object",
+	"properties": {
+		"aa": {
+			"type": "object",
+			"properties": {
+				"bb": {
+					"type": "object",
+					"properties": {
+						"cc": {
+							"type": "number"
+						},
+						"dd": {
+							"type": "string"
+						},
+						"ff": {
+							"type": "array",
+							"items": {
+								"type": "object",
+								"properties": {
+									"gg": {
+										"type": "string"
+									},
+									"hh": {
+										"type": "string"
+									}
+								}
+							}
+						}
+					}
+				},
+				"ee": {
+					"type": "object",
+					"properties": {
+						"jj": {
+							"type": "string"
+						},
+						"kk": {
+							"type": "string"
+						}
+					}
+				},
+				"ll": {
+					"type": "string"
+				}
+			}
+		},
+		"ii": {
+			"type": "string"
+		},
+		"mm": {
+			"type": "array",
+			"items": "string"
 		}
 	}
 }
