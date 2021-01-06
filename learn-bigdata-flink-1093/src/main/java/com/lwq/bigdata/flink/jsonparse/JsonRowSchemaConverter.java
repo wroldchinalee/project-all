@@ -227,6 +227,7 @@ public final class JsonRowSchemaConverter {
         int i = 0;
         ArrayList<String> resultNames = new ArrayList<>();
         ArrayList<TypeInformation<?>> resultTypes = new ArrayList<>();
+        boolean inArray = location.contains("items");
         // 里面的主要代码为：
         // 1.获取字段的key，获取字段的jsonNode
         // 2.对字段的jsonNode进行转换，将其转换成typeInfo
@@ -242,7 +243,7 @@ public final class JsonRowSchemaConverter {
             types[i] = typeInfo;
 //            System.out.println(names[i]);
 //            System.out.println(typeInfo.getTypeClass());
-            if (types[i].getTypeClass().equals(Row.class)) {
+            if (Row.class.equals(typeInfo.getTypeClass())) {
                 RowTypeInfo rowType = (RowTypeInfo) typeInfo;
                 int innerArity = rowType.getArity();
                 String[] innerFieldNames = rowType.getFieldNames();
@@ -251,7 +252,11 @@ public final class JsonRowSchemaConverter {
                     resultTypes.add(rowType.getTypeAt(j));
                 }
             } else {
-                resultNames.add(location + '/' + subNode.getKey());
+                if (inArray) {
+                    resultNames.add(subNode.getKey());
+                } else {
+                    resultNames.add(location + '/' + subNode.getKey());
+                }
                 resultTypes.add(typeInfo);
             }
             i++;
@@ -268,7 +273,6 @@ public final class JsonRowSchemaConverter {
         TypeInformation<?>[] typesArr = new TypeInformation[resultTypes.size()];
         return Types.ROW_NAMED(resultNames.toArray(namesArr), resultTypes.toArray(typesArr));
     }
-
 
 
     private static TypeInformation<?> convertArray(String location, JsonNode node, JsonNode root) {
