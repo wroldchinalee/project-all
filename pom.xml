@@ -17,6 +17,7 @@
         <!--<module>project-alink-mini</module>-->
         <module>learn-bigdata-flink</module>
         <module>learn-bigdata-flink-1093</module>
+        <module>learn-java-datastruct</module>
     </modules>
 
 
