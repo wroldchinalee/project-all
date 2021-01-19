@@ -31,44 +31,110 @@ public class FlatRowType {
         for (Map.Entry<String, Integer> entry : indexMap.entrySet()) {
             System.out.println(entry);
         }
+        Row result = assembleRow(row, rowTypeInfo, indexMap);
+        System.out.println(result);
+        int flatCol = 2;
+        Object field = result.getField(flatCol);
+        System.out.println(field);
+        List<Row> resultList = flatRow(result, rowTypeInfo, flatCol);
+        System.out.println("-------------result------------");
+        for (int i = 0; i < resultList.size(); i++) {
+            System.out.println(resultList.get(i));
+        }
+
     }
 
+    public static List<Row> flatRow(Row oriRow, RowTypeInfo rowTypeInfo, int flatCol) {
+        Object obj = oriRow.getField(flatCol);
+        TypeInformation objType = rowTypeInfo.getTypeAt(flatCol);
+        if (!(objType instanceof ObjectArrayTypeInfo) || !objType.getTypeClass().equals(Row[].class)) {
+            return Arrays.asList(oriRow);
+        }
+        TypeInformation<Row> componentInfo = ((ObjectArrayTypeInfo) objType).getComponentInfo();
+        String arrayFieldName = rowTypeInfo.getFieldNames()[flatCol];
+        RowTypeInfo elemTypeInfo = (RowTypeInfo) componentInfo;
+        String[] fieldNames = elemTypeInfo.getFieldNames();
+        Object[] objectArray = (Object[]) oriRow.getField(flatCol);
+        ArrayList<Row> result = new ArrayList<>();
+        for (int i = 0; i < objectArray.length; i++) {
+            Row flatRow = ((Row) objectArray[i]);
+            Row resultRow = new Row(rowTypeInfo.getArity() + fieldNames.length - 1);
+            // 第一部分 0-->flatIndex
+            for (int j = 0; j < flatCol; j++) {
+                resultRow.setField(j, oriRow.getField(j));
+            }
+            // 第二部分 flatIndex-->flatIndex+flatRow.length
+            for (int j = 0; j < flatRow.getArity(); j++) {
+                resultRow.setField(flatCol + j, flatRow.getField(j));
+            }
+            for (int j = 0; j < (resultRow.getArity() - flatRow.getArity() - flatCol); j++) {
+                resultRow.setField(flatCol + flatRow.getArity() + j, oriRow.getField(flatCol + 1 + j));
+            }
+            // 第三部分 flatIndex+flatRow.length-->resultRow.length
+            result.add(resultRow);
+        }
+        return result;
+    }
 
     public static Row assembleRow(Row oriRow, RowTypeInfo rowTypeInfo, Map<String, Integer> indexMap) {
         Row result = new Row(rowTypeInfo.getArity());
         int arity = rowTypeInfo.getArity();
         for (int i = 0; i < arity; i++) {
             String path = rowTypeInfo.getFieldNames()[i];
-            TypeInformation typeInformation = rowTypeInfo.getTypeAt(i);
-            if (typeInformation instanceof ObjectArrayTypeInfo) {
-
-            } else {
-            }
+            Object obj = getObjectByPath(oriRow, path, indexMap);
+            ;
+            result.setField(i, obj);
         }
         return result;
     }
 
     public static Object getObjectByPath(Row oriRow, String path, Map<String, Integer> indexMap) {
-        if (StringUtils.isEmpty(path)) {
+        if (Objects.isNull(oriRow) || StringUtils.isEmpty(path)) {
             return null;
         }
+        if (path.startsWith("<root>/")) {
+            int rootIndex = path.indexOf("/");
+            path = path.substring(rootIndex + 1);
+        }
+        int count = 0;
         String[] paths = path.split("/");
         int length = paths.length;
-        int curr = 0;
         Object currObj = oriRow;
-        while (curr < length) {
-            String currPath = paths[curr];
+        for (int i = 0; i < length; i++) {
+            String currPath = paths[i];
             if (!indexMap.containsKey(currPath)) {
                 //TODO
             }
-            int pathIndex = indexMap.get(currPath);
+            int index = indexMap.get(currPath);
             if (currObj instanceof Row) {
-
+                currObj = ((Row) currObj).getField(index);
             }
-            curr++;
+            count++;
         }
-        return null;
+        return currObj;
     }
+
+//    public static Object getObjectByPath2(Row oriRow, String path, Map<String, Integer> indexMap) {
+//        if (StringUtils.isEmpty(path)) {
+//            return null;
+//        }
+//        String[] paths = path.split("/");
+//        int length = paths.length;
+//        int curr = 0;
+//        Object currObj = oriRow;
+//        while (curr < length) {
+//            String currPath = paths[curr];
+//            if (!indexMap.containsKey(currPath)) {
+//                //TODO
+//            }
+//            int pathIndex = indexMap.get(currPath);
+//            if (currObj instanceof Row) {
+//
+//            }
+//            curr++;
+//        }
+//        return null;
+//    }
 
     public static RowTypeInfo flatRowTypeInfo(RowTypeInfo rowTypeInfo, String location, Map<String, Integer> indexMap) {
         if (rowTypeInfo == null) {
