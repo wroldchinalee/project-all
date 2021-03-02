@@ -62,9 +62,9 @@ bigdata02为当前主机名
 
 如果缺少这个jar会报错，如下：
 
-![img](F:\src\tuling\project-all\learn-bigdata-flink\doc\1105757-20200727134952833-307337542.png)
-
-
+<div align=center>
+  <img src="images/1105757-20200727134952833-307337542.png" />
+</div>
 
 
 
@@ -139,7 +139,11 @@ bigdata02为当前主机名
 
 我们进入到Web UI地址，内容如下：
 
-![image-20210123100144325](F:\src\tuling\project-all\learn-bigdata-flink\doc\image-20210123100144325.png)
+<div align=center>
+  <img src="images/image-20210123100144325.png" />
+</div>
+
+
 
 我们可以看到，现在分配了0个slot，也就是说刚启动的时候没有启动taskmanager，下面我们来提交一个任务看看。
 
@@ -196,7 +200,11 @@ hdfs dfs -mkdir /test_dir/output_dir
 
 任务执行完成后WebUI内容如下，发现有一个可用的slot，但是过一段时间该slot又会被回收。
 
-![image-20210123100604055](F:\src\tuling\project-all\learn-bigdata-flink\doc\image-20210123100604055.png)
+<div align=center>
+  <img src="images/image-20210123100604055.png" />
+</div>
+
+
 
 
 

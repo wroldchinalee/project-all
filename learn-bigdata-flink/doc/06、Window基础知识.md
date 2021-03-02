@@ -5,9 +5,11 @@
 #### 一、基本介绍
 
 Apache Flink（以下简称 Flink） 是一个天然支持无限流数据处理的分布式计算框架，在 Flink 中 **Window 可以将无限流切分成有限流**，是处理有限流的核心组件，现在Flink 中 Window 可以是时间驱动的（Time Window），也可以是数据驱动的（Count Window）。下面的代码是在 Flink 中使用 Window 的两个示例 
+<div align=center>
+  <img src="images/image-20210218212759188.png" />
+</div>
 
 
-![image-20210218212759188](C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\image-20210218212759188.png)
 
 根据上面的示例可以看出来，window主要有以下几部分：
 
@@ -31,13 +33,21 @@ Apache Flink（以下简称 Flink） 是一个天然支持无限流数据处理�
 
 ##### 大概流程
 
-![image-20210220110903944](C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\image-20210220110903944.png)
+<div align=center>
+  <img src="images/image-20210220110903944.png" />
+</div>
+
+
 
 ##### 1.WindowAssinger
 
+<div align=center>
+  <img src="images/image-20210218214113791.png" />
+</div>
+
 flink有一些内置的WindowAssigner，例如：
 
-![image-20210218214113791](C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\image-20210218214113791.png)
+
 
 比较常用的有：
 
@@ -102,7 +112,13 @@ public enum TriggerResult {
 
 一些内置的trigger：
 
-![image-20210218222229741](C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\image-20210218222229741.png)
+<div align=center>
+  <img src="images/image-20210218222229741.png" />
+</div>
+
+
+
+
 
 比较常用的有：
 
@@ -182,7 +198,11 @@ public abstract class Trigger<T, W extends Window> implements Serializable {
 
 flink提供了一些内置的Evictor：
 
-![image-20210218223619612](C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\image-20210218223619612.png)
+<div align=center>
+  <img src="images/image-20210218223619612.png" />
+</div>
+
+
 
 - CountEvictor：在窗口维护用户指定数量的元素，如果多于用户指定的数量，从窗口缓冲区的开头丢弃多余的元素。
 - DeltaEvictor：使用 DeltaFunction 和一个阈值，来计算窗口缓冲区中的最后一个元素与其余每个元素之间的差值，并删除差值大于或等于阈值的元素。
