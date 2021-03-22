@@ -205,7 +205,7 @@ hdfs dfs -mkdir /test_dir/output_dir
 </div>
 
 
-
+./bin/flink run -c org.apache.flink.streaming.examples.windowing.TopSpeedWindowing examples/streaming/TopSpeedWindowing.jar
 
 
 ##### 6.**在** **Yarn** **上运行单个** Flink job（Job Cluster模式）
