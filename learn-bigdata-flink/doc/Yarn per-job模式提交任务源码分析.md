@@ -160,3 +160,168 @@ public CustomCommandLine getActiveCustomCommandLine(CommandLine commandLine) {
 
 ##### 1.4 执行用户代码
 
+```java
+protected void run(String[] args) throws Exception {
+	...	...
+	executeProgram(effectiveConfiguration, program);
+	...	...
+}
+```
+
+```java
+protected void executeProgram(final Configuration configuration, final PackagedProgram program) throws ProgramInvocationException {
+	ClientUtils.executeProgram(DefaultExecutorServiceLoader.INSTANCE, configuration, program);
+}
+```
+
+```java
+public static void executeProgram(
+			PipelineExecutorServiceLoader executorServiceLoader,
+			Configuration configuration,
+			PackagedProgram program) throws ProgramInvocationException {
+			...	...
+			program.invokeInteractiveModeForExecution();
+			...	..
+}
+```
+
+```java
+	public void invokeInteractiveModeForExecution() throws ProgramInvocationException {
+		callMainMethod(mainClass, args);
+	}
+```
+
+```java
+private static void callMainMethod(Class<?> entryClass, String[] args) throws ProgramInvocationException {
+	...	...
+	mainMethod.invoke(null, (Object) args);
+	...	...
+}
+```
+
+
+
+##### 1.5 生成StreamGraph
+
+第4步就开始执行用户代码的main方法了，main方法中会根据使用的算子，将算子转化为Transformation对象，然后添加到StreamExecutionEnvironment的transformations列表中，这个列表在生成StreamGraph时会用到。
+
+先看一下是如何添加到transformations列表中，
+
+我们以flatMap这个算子为例：
+
+```java
+public <R> SingleOutputStreamOperator<R> flatMap(FlatMapFunction<T, R> flatMapper) {
+
+   TypeInformation<R> outType = TypeExtractor.getFlatMapReturnTypes(clean(flatMapper),
+         getType(), Utils.getCallLocationName(), true);
+
+   return flatMap(flatMapper, outType);
+}
+```
+
+```java
+public <R> SingleOutputStreamOperator<R> flatMap(FlatMapFunction<T, R> flatMapper, TypeInformation<R> outputType) {
+	return transform("Flat Map", outputType, new StreamFlatMap<>(clean(flatMapper)));
+}
+```
+
+```java
+public <R> SingleOutputStreamOperator<R> transform(
+		String operatorName,
+		TypeInformation<R> outTypeInfo,
+		OneInputStreamOperator<T, R> operator) {
+	// TODO by lwq
+	return doTransform(operatorName, outTypeInfo, SimpleOperatorFactory.of(operator));
+}
+```
+
+```java
+protected <R> SingleOutputStreamOperator<R> doTransform(
+		String operatorName,
+		TypeInformation<R> outTypeInfo,
+		StreamOperatorFactory<R> operatorFactory) {
+	// read the output type of the input Transform to coax out errors about MissingTypeInfo
+	transformation.getOutputType();
+	// TODO by lwq 创建transformation
+	OneInputTransformation<T, R> resultTransform = new OneInputTransformation<>(
+			this.transformation,
+			operatorName,
+			operatorFactory,
+			outTypeInfo,
+			environment.getParallelism());
+	@SuppressWarnings({"unchecked", "rawtypes"})
+	SingleOutputStreamOperator<R> returnStream = new SingleOutputStreamOperator(environment, resultTransform);
+	// TODO by lwq 将transformation添加到env的transformations集合
+	getExecutionEnvironment().addOperator(resultTransform);
+	return returnStream;
+}
+```
+
+```java
+public void addOperator(Transformation<?> transformation) {
+	...	...
+	this.transformations.add(transformation);
+}
+```
+
+
+
+执行完用户代码后，会调用StreamExecutionEnvironment的execute方法来执行任务。
+
+在这里会生成StreamGraph，代码如下：
+
+```java
+public JobExecutionResult execute(String jobName) throws Exception {
+   Preconditions.checkNotNull(jobName, "Streaming Job name should not be null.");
+
+   // TODO by lwq 先创建StreamGraph，再执行
+   return execute(getStreamGraph(jobName));
+}
+```
+
+```java
+public StreamGraph getStreamGraph(String jobName) {
+	// TODO by lwq 创建StreamGraph
+	return getStreamGraph(jobName, true);
+}
+```
+
+```java
+public StreamGraph getStreamGraph(String jobName, boolean clearTransformations) {
+	// TODO by lwq 通过调用StreamGraphGenerator的generate方法来生成StreamGraph
+	StreamGraph streamGraph = getStreamGraphGenerator().setJobName(jobName).generate();
+	if (clearTransformations) {
+		this.transformations.clear();
+	}
+	return streamGraph;
+}
+```
+
+```java
+public StreamGraph generate() {
+	// TODO by lwq 生成streamGraph
+	streamGraph = new StreamGraph(executionConfig, checkpointConfig, savepointRestoreSettings);
+	streamGraph.setStateBackend(stateBackend);
+	streamGraph.setChaining(chaining);
+	streamGraph.setScheduleMode(scheduleMode);
+	streamGraph.setUserArtifacts(userArtifacts);
+	streamGraph.setTimeCharacteristic(timeCharacteristic);
+	streamGraph.setJobName(jobName);
+	streamGraph.setBlockingConnectionsBetweenChains(blockingConnectionsBetweenChains);
+	alreadyTransformed = new HashMap<>();
+	// TODO by lwq 主要代码
+	// TODO by lwq 遍历transformations中的算子进行转换
+	for (Transformation<?> transformation: transformations) {
+		transform(transformation);
+	}
+	final StreamGraph builtStreamGraph = streamGraph;
+	alreadyTransformed.clear();
+	alreadyTransformed = null;
+	streamGraph = null;
+	return builtStreamGraph;
+}
+```
+
+
+
+##### 1.6 创建JobGraph
