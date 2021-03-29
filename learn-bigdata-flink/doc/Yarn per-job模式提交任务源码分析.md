@@ -160,6 +160,8 @@ public CustomCommandLine getActiveCustomCommandLine(CommandLine commandLine) {
 
 ##### 1.4 执行用户代码
 
+**CliFronted.java**
+
 ```java
 protected void run(String[] args) throws Exception {
 	...	...
@@ -208,6 +210,8 @@ private static void callMainMethod(Class<?> entryClass, String[] args) throws Pr
 先看一下是如何添加到transformations列表中，
 
 我们以flatMap这个算子为例：
+
+**StreamExecutionEnvironment.java**
 
 ```java
 public <R> SingleOutputStreamOperator<R> flatMap(FlatMapFunction<T, R> flatMapper) {
@@ -270,6 +274,8 @@ public void addOperator(Transformation<?> transformation) {
 
 在这里会生成StreamGraph，代码如下：
 
+**StreamExecutionEnvironment.java**
+
 ```java
 public JobExecutionResult execute(String jobName) throws Exception {
    Preconditions.checkNotNull(jobName, "Streaming Job name should not be null.");
@@ -325,3 +331,276 @@ public StreamGraph generate() {
 
 
 ##### 1.6 创建JobGraph
+
+**StreamExectutionEnvironment.java**
+
+```java
+public JobExecutionResult execute(String jobName) throws Exception {
+	Preconditions.checkNotNull(jobName, "Streaming Job name should not be null.");
+	// TODO by lwq 先创建StreamGraph，再执行
+	return execute(getStreamGraph(jobName));
+}
+```
+
+```java
+public JobExecutionResult execute(StreamGraph streamGraph) 
+   // TODO by lwq 执行方法
+   final JobClient jobClient = executeAsync(streamGraph);
+  ...	...
+}
+```
+
+```java
+public JobClient executeAsync(StreamGraph streamGraph) throws Exception 
+	...	...
+	CompletableFuture<? extends JobClient> jobClientFuture = executorFactory
+	.getExecutor(configuration)
+	.execute(streamGraph, configuration);
+	...	...
+}
+```
+
+这里executorFactory的实现是YarnJobClusterExecutorFactory，getExecutor方法返回YarnJobClusterExecutor，然后调用父类AbstractJobClusterExecutor的execute方法。
+
+**YarnJobClusterExecutor.java**
+
+```java
+public CompletableFuture<JobClient> execute(@Nonnull final Pipeline pipeline, @Nonnull final Configuration configuration) throws Exception {
+	// TODO by lwq 生成JobGraph
+	final JobGraph jobGraph = ExecutorUtils.getJobGraph(pipeline, configuration);
+	...	...
+}
+```
+
+
+
+##### 1.7 上传jar包和配置
+
+**YarnJobClusterExecutor.java**
+
+```java
+public CompletableFuture<JobClient> execute(@Nonnull final Pipeline pipeline, @Nonnull final Configuration configuration) throws Exception {
+	
+	// TODO by lwq 如果是yarn模式，clusterClientFactory为YarnClusterClientFactory
+    // 返回的clusterDescriptor为YarnClusterDescriptor
+	try (final ClusterDescriptor<ClusterID> clusterDescriptor = clusterClientFactory.createClusterDescriptor(configuration)) {
+		final ExecutionConfigAccessor configAccessor = ExecutionConfigAccessor.fromConfiguration(configuration);
+        // 调用AbstractContainerizedClusterClientFactory类的getClusterSpecification方法
+		final ClusterSpecification clusterSpecification = clusterClientFactory.getClusterSpecification(configuration);
+		// TODO by lwq 这里面会进行上传jar包和配置的操作
+		final ClusterClientProvider<ClusterID> clusterClientProvider = clusterDescriptor
+				.deployJobCluster(clusterSpecification, jobGraph, configAccessor.getDetachedMode());
+		LOG.info("Job has been submitted with JobID " + jobGraph.getJobID());
+		return CompletableFuture.completedFuture(
+				new ClusterClientJobClientAdapter<>(clusterClientProvider, jobGraph.getJobID()));
+	}
+}
+```
+
+**YarnClusterDescriptor.java**
+
+```java
+public ClusterClientProvider<ApplicationId> deployJobCluster(
+	ClusterSpecification clusterSpecification,
+	JobGraph jobGraph,
+	boolean detached) throws ClusterDeploymentException {
+	try {
+		// TODO by lwq 部署应用
+		return deployInternal(
+			clusterSpecification,
+			"Flink per-job cluster",
+			getYarnJobClusterEntrypoint(),
+			jobGraph,
+			detached);
+	} catch (Exception e) {
+		throw new ClusterDeploymentException("Could not deploy Yarn job cluster.", e);
+	}
+}
+```
+
+```java
+private ClusterClientProvider<ApplicationId> deployInternal(
+		ClusterSpecification clusterSpecification,
+		String applicationName,
+		String yarnClusterEntrypoint,
+		@Nullable JobGraph jobGraph,
+		boolean detached) throws Exception {
+	...	...
+	// TODO by lwq 启动applicationMaster
+	ApplicationReport report = startAppMaster(
+			flinkConfiguration,
+			applicationName,
+			yarnClusterEntrypoint,
+			jobGraph,
+			yarnClient,
+			yarnApplication,
+			validClusterSpecification);
+	...	...
+}
+```
+
+```java
+private ApplicationReport startAppMaster(
+		Configuration configuration,
+		String applicationName,
+		String yarnClusterEntrypoint,
+		JobGraph jobGraph,
+		YarnClient yarnClient,
+		YarnClientApplication yarnApplication,
+		ClusterSpecification clusterSpecification) throws Exception {
+	// ------------------ Initialize the file systems ------------------------
+	org.apache.flink.core.fs.FileSystem.initialize(
+			configuration,
+			PluginUtils.createPluginManagerFromRootFolder(configuration));
+	// 初始化文件系统
+	final FileSystem fs = FileSystem.get(yarnConfiguration);
+	...	...
+	// TODO 创建ApplicationSubmissionContext 提交应用的上下文
+	ApplicationSubmissionContext appContext = yarnApplication.getApplicationSubmissionContext();
+	// The files need to be shipped and added to classpath.
+    // 会被添加到classpath中需要上传的文件
+	Set<File> systemShipFiles = new HashSet<>(shipFiles.size());
+	// The files only need to be shipped.
+    // 只上传不添加到classpath
+	Set<File> shipOnlyFiles = new HashSet<>();
+	for (File file : shipFiles) {
+		systemShipFiles.add(file.getAbsoluteFile());
+	}
+	final String logConfigFilePath = configuration.getString(YarnConfigOptionsInternal.APPLICATION_LOG_CONFIG_FILE);
+	if (logConfigFilePath != null) {
+		systemShipFiles.add(new File(logConfigFilePath));
+	}
+	addLibFoldersToShipFiles(systemShipFiles);
+	// Plugin files only need to be shipped and should not be added to classpath.
+	addPluginsFoldersToShipFiles(shipOnlyFiles);
+	// Set-up ApplicationSubmissionContext for the application
+	final ApplicationId appId = appContext.getApplicationId();
+	// ------------------ Add Zookeeper namespace to local flinkConfiguraton ------
+	...	...
+	configuration.setString(HighAvailabilityOptions.HA_CLUSTER_ID, zkNamespace);
+	// yarn的重试次数
+    if (HighAvailabilityMode.isHighAvailabilityModeActivated(configuration)) {
+		// activate re-execution of failed applications
+		appContext.setMaxAppAttempts(
+				configuration.getInteger(
+						YarnConfigOptions.APPLICATION_ATTEMPTS.key(),
+						YarnConfiguration.DEFAULT_RM_AM_MAX_ATTEMPTS));
+		activateHighAvailabilitySupport(appContext);
+	} else {
+		// set number of application retries to 1 in the default case
+		appContext.setMaxAppAttempts(
+				configuration.getInteger(
+						YarnConfigOptions.APPLICATION_ATTEMPTS.key(),
+						1));
+	}
+	final Set<File> userJarFiles = (jobGraph == null)
+			// not per-job submission
+			? Collections.emptySet()
+			// add user code jars from the provided JobGraph
+			: jobGraph.getUserJars().stream().map(f -> f.toUri()).map(File::new).collect(Collectors.toSet());
+	// only for per job mode
+	if (jobGraph != null) {
+		for (Map.Entry<String, DistributedCache.DistributedCacheEntry> entry : jobGraph.getUserArtifacts().entrySet()) {
+			org.apache.flink.core.fs.Path path = new org.apache.flink.core.fs.Path(entry.getValue().filePath);
+			// only upload local files
+			if (!path.getFileSystem().isDistributedFS()) {
+				Path localPath = new Path(path.getPath());
+				Tuple2<Path, Long> remoteFileInfo =
+					Utils.uploadLocalFileToRemote(fs, appId.toString(), localPath, homeDir, entry.getKey());
+				jobGraph.setUserArtifactRemotePath(entry.getKey(), remoteFileInfo.f0.toString());
+			}
+		}
+		jobGraph.writeUserArtifactEntriesToConfiguration();
+	}
+	// local resource map for Yarn
+	final Map<String, LocalResource> localResources = new HashMap<>(2 + systemShipFiles.size() + userJarFiles.size());
+	// list of remote paths (after upload)
+	final List<Path> paths = new ArrayList<>(2 + systemShipFiles.size() + userJarFiles.size());
+	// ship list that enables reuse of resources for task manager containers
+	StringBuilder envShipFileList = new StringBuilder();
+	// upload and register ship files, these files will be added to classpath.
+    // 上传添加到classpath的文件
+	List<String> systemClassPaths = uploadAndRegisterFiles(
+		systemShipFiles,
+		fs,
+		homeDir,
+		appId,
+		paths,
+		localResources,
+		Path.CUR_DIR,
+		envShipFileList);
+	// upload and register ship-only files
+    // 上传不需要添加到classapth的文件
+	uploadAndRegisterFiles(
+		shipOnlyFiles,
+		fs,
+		homeDir,
+		appId,
+		paths,
+		localResources,
+		Path.CUR_DIR,
+		envShipFileList);
+    // 上传用户代码
+	final List<String> userClassPaths = uploadAndRegisterFiles(
+		userJarFiles,
+		fs,
+		homeDir,
+		appId,
+		paths,
+		localResources,
+		userJarInclusion == YarnConfigOptions.UserJarInclusion.DISABLED ?
+			ConfigConstants.DEFAULT_FLINK_USR_LIB_DIR : Path.CUR_DIR,
+		envShipFileList);
+	...	...
+    // 封装启动AM container的java 命令
+	final ContainerLaunchContext amContainer = setupApplicationMasterContainer(
+			yarnClusterEntrypoint,
+			hasLogback,
+			hasLog4j,
+			hasKrb5,
+			clusterSpecification.getMasterMemoryMB());
+	
+    ...	...
+	amContainer.setLocalResources(localResources);
+    ...	...
+	// Setup CLASSPATH and environment variables for ApplicationMaster
+	final Map<String, String> appMasterEnv = new HashMap<>();
+	// set user specified app master environment variables
+	appMasterEnv.putAll(
+		BootstrapTools.getEnvironmentVariables(ResourceManagerOptions.CONTAINERIZED_MASTER_ENV_PREFIX, configuration));
+	// set Flink app class path
+	appMasterEnv.put(YarnConfigKeys.ENV_FLINK_CLASSPATH, classPathBuilder.toString());
+	// set Flink on YARN internal configuration values
+	appMasterEnv.put(YarnConfigKeys.FLINK_JAR_PATH, remotePathJar.toString());
+	appMasterEnv.put(YarnConfigKeys.ENV_APP_ID, appId.toString());
+	appMasterEnv.put(YarnConfigKeys.ENV_CLIENT_HOME_DIR, homeDir.toString());
+	appMasterEnv.put(YarnConfigKeys.ENV_CLIENT_SHIP_FILES, envShipFileList.toString());
+	appMasterEnv.put(YarnConfigKeys.ENV_ZOOKEEPER_NAMESPACE, getZookeeperNamespace());
+	appMasterEnv.put(YarnConfigKeys.FLINK_YARN_FILES, yarnFilesDir.toUri().toString());
+	// https://github.com/apache/hadoop/blob/trunk/hadoop-yarn-project/hadoop-yarn/hadoop-yarn-site/src/site/markdown/YarnApplicationSecurity.md#identity-on-an-insecure-cluster-hadoop_user_name
+	appMasterEnv.put(YarnConfigKeys.ENV_HADOOP_USER_NAME, UserGroupInformation.getCurrentUser().getUserName());
+	...	...
+	//To support Yarn Secure Integration Test Scenario
+	if (remoteYarnSiteXmlPath != null) {
+		appMasterEnv.put(YarnConfigKeys.ENV_YARN_SITE_XML_PATH, remoteYarnSiteXmlPath.toString());
+	}
+	...	...
+	Utils.setupYarnClassPath(yarnConfiguration, appMasterEnv);
+	amContainer.setEnvironment(appMasterEnv);
+	// Set up resource type requirements for ApplicationMaster
+	Resource capability = Records.newRecord(Resource.class);
+	capability.setMemory(clusterSpecification.getMasterMemoryMB());
+	capability.setVirtualCores(flinkConfiguration.getInteger(YarnConfigOptions.APP_MASTER_VCORES));
+	final String customApplicationName = customName != null ? customName : applicationName;
+	appContext.setApplicationName(customApplicationName);
+	appContext.setApplicationType(applicationType != null ? applicationType : "Apache Flink");
+	appContext.setAMContainerSpec(amContainer);
+	appContext.setResource(capability);
+	...	...
+	// TODO by lwq 通过yarnClient提交应用
+	LOG.info("Submitting application master " + appId);
+	yarnClient.submitApplication(appContext);
+	...	...
+}
+```
+
