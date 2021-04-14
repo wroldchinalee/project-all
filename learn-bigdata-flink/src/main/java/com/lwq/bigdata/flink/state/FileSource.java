@@ -21,7 +21,7 @@ public class FileSource implements SourceFunction<String> {
 
     private BufferedReader bufferedReader;
     private InputStream inputStream;
-    private Random random;
+    private Random random = new Random();
 
     @Override
     public void run(SourceContext<String> ctx) throws Exception {
@@ -29,7 +29,7 @@ public class FileSource implements SourceFunction<String> {
         bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
         String line = null;
         while ((line = bufferedReader.readLine()) != null) {
-            TimeUnit.MILLISECONDS.sleep(random.nextInt(500));
+            TimeUnit.MILLISECONDS.sleep(random.nextInt(5000));
             ctx.collect(line);
         }
 

@@ -4,9 +4,10 @@ import org.apache.flink.formats.json.JsonRowDeserializationSchema;
 import org.apache.flink.types.Row;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.TopicPartition;
 
 import java.io.IOException;
-import java.time.Duration;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Properties;
 
@@ -15,7 +16,7 @@ import java.util.Properties;
  * @create: 2020/12/19
  * @description: MyKafkaConsumer
  **/
-public class MyKafkaConsumer {
+public class MyKafkaConsumer2 {
     public static void main(String[] args) throws InterruptedException {
         Properties props = new Properties();
 
@@ -33,7 +34,9 @@ public class MyKafkaConsumer {
         props.put("client.id", "zy_client_id");
         KafkaConsumer<String, String> consumer = new KafkaConsumer<>(props);
         // 订阅test1 topic
-        consumer.subscribe(Collections.singletonList("test"));
+//        consumer.subscribe(Collections.singletonList("test"));
+        TopicPartition topicPartition = new TopicPartition("test", 0);
+        consumer.assign(Arrays.asList(topicPartition));
 
         String jsonSchema = FlinkKafkaSqlMain.jsonSchema2;
         JsonRowDeserializationSchema schema = new JsonRowDeserializationSchema.Builder(jsonSchema).failOnMissingField().build();
@@ -50,6 +53,7 @@ public class MyKafkaConsumer {
                     e.printStackTrace();
                 }
             });
+            consumer.commitSync();
         }
     }
 }

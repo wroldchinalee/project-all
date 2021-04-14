@@ -9,6 +9,7 @@ public class MyParallelSource implements ParallelSourceFunction<Long> {
     private long number;
     private boolean isRunning = true;
 
+
     @Override
     public void run(SourceContext<Long> ctx) throws Exception {
         while (isRunning) {

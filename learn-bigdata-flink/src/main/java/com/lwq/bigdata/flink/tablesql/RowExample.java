@@ -10,6 +10,7 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.java.StreamTableEnvironment;
 import org.apache.flink.types.Row;
+import scala.reflect.internal.Types;
 
 /**
  * Created by Administrator on 2020-12-14.
@@ -39,7 +40,6 @@ public class RowExample {
     private static RowTypeInfo getRowTypeInfo() {
         TypeInformation[] types = new TypeInformation[3]; // 3个字段
         String[] fieldNames = new String[3];
-
         types[0] = BasicTypeInfo.STRING_TYPE_INFO;
         types[1] = BasicTypeInfo.LONG_TYPE_INFO;
         types[2] = BasicTypeInfo.DOUBLE_TYPE_INFO;
