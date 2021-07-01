@@ -1,6 +1,6 @@
 package com.lwq.bigdata.flink.state;
 
-import org.apache.commons.compress.utils.Lists;
+import com.google.common.collect.Lists;
 import org.apache.flink.api.common.functions.RichFlatMapFunction;
 import org.apache.flink.api.common.state.ListState;
 import org.apache.flink.api.common.state.ListStateDescriptor;
